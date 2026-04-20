@@ -1,0 +1,64 @@
+<%- include('partials/header') %>
+<link rel="stylesheet" type="text/css" href="/css/style.css">
+<div class="container">
+  <div class="login-box">
+    <h2>Welcome to our Community!</h2>
+    <h3>Register here</h3>
+    <div id="message" class="alert" style="display: none"></div>
+    <form id="register-form">
+      <div class="input-group">
+        <label for="userid">User ID</label>
+        <input type="text" id="userid" name="userid" required />
+      </div>
+      <div class="input-group">
+        <label for="phone">Phone Number</label>
+        <input type="tel" id="phone" name="phone" pattern="[0-9]{10}" required />
+      </div>
+      <div class="input-group">
+        <label for="username">Email</label>
+        <input type="email" id="username" name="username" required />
+      </div>
+      <div class="input-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required />
+      </div>
+      <div class="input-group">
+        <label for="confirm-password">Confirm Password</label>
+        <input
+          type="password"
+          id="confirm-password"
+          name="confirmPassword"
+          required
+        />
+      </div>
+      <button type="submit" class="btn">Register</button>
+    </form>
+  </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+  $("#register-form").submit(function (e) {
+    e.preventDefault();
+    $.ajax({
+      type: "POST",
+      url: "/register",
+      data: $("#register-form").serialize(),
+      success: function (response) {
+        $("#message").removeClass().addClass(response.class);
+        $("#message").html(response.message).fadeIn();
+        if (response.success) {
+          setTimeout(function () {
+            window.location.href = "/login";
+          }, 2000);
+        }
+      },
+      error: function () {
+        $("#message").removeClass().addClass("alert alert-danger");
+        $("#message").html("An error occurred. Please try again.").fadeIn();
+      },
+    });
+  });
+</script>
+
+<%- include('partials/footer') %>

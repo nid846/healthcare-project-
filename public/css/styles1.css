@@ -1,0 +1,8 @@
+body{
+  background-color: lightblue;
+}
+
+.text-bg-dark {
+  background: linear-gradient(to right, #7fbae1, #7cc6e4) !important;
+}
+

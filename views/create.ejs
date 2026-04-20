@@ -1,0 +1,127 @@
+<%- include('partials/header') %>
+<style>
+  body {
+  font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+  background: lightblue;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  color: #fff;
+  }
+
+  .message {
+    position: fixed;
+    top: 5%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 3000px;
+    max-width: 900px;
+    background: linear-gradient(135deg, #823fc9, #356bc7);
+    color: white;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+  }
+
+  h1 {
+    font-size: 1.4rem;
+    margin: 10px 0;
+    font-weight: bold;
+  }
+
+.container {
+  width: 3000px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 30px;
+  border-radius: 15px;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  color: #333;
+}
+
+h2 {
+  font-size: 28px;
+  font-weight: 600;
+  color: #0056b3;
+}
+
+.text-muted {
+  color: #555;
+  font-size: 14px;
+  margin-bottom: 15px;
+}
+
+hr {
+  border: 0;
+  height: 2px;
+  background: #ddd;
+  border-radius: 5px;
+}
+
+p {
+  font-size: 18px;
+  line-height: 1.8;
+  color: #444;
+}
+
+.btn {
+  display: inline-block;
+  padding: 12px 20px;
+  text-decoration: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn-secondary {
+  background: #0056b3;
+  color: white;
+  border: none;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.btn-secondary:hover {
+  background: #004494;
+  transform: scale(1.05);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+</style>
+<div class="message">
+  <h1>Every story matters.</h1>
+  <h1>Every voice deserves to be heard.</h1>
+  <h1>Your words have the power to inspire, heal, and create change.</h1>
+  <h1>Start your journey today—write, share, and leave your mark on the world.</h1>
+</div>
+<div class="container mt-5">
+  <h2>Create a New Blog Post</h2>
+  <form action="/create" method="POST">
+    <div class="mb-3">
+      <label for="title" class="form-label">Title</label>
+      <input
+        type="text"
+        class="form-control"
+        id="title"
+        name="title"
+        required
+      />
+    </div>
+    <div class="mb-3">
+      <label for="content" class="form-label">Content</label>
+      <textarea
+        class="form-control"
+        id="content"
+        name="content"
+        rows="5"
+        required
+      ></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Post</button>
+  </form>
+</div>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,17 @@
+<%- include('partials/header') %>
+<style>
+  body{
+    background-color: lightblue;
+    font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+  }
+</style>>
+<div class="container mt-5">
+  <h2><%= post.title %></h2>
+  <p class="text-muted">Posted on <%= post.created_at.toDateString() %></p>
+  <hr />
+  <p><%= post.content %></p>
+
+  <a href="/community" class="btn btn-secondary mt-3">← Back to Community</a>
+</div>
+
+<%- include('partials/footer') %>

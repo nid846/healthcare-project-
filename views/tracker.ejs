@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Habit Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {
+    font-family: 'Lucida Sans', Geneva, Verdana, sans-serif;
+    background-color: #ADD8E6;
+    color: #1c5985;
+    text-align: center;
+}
+
+h2 {
+    position: fixed;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60%;
+    max-width: 900px;
+    background: linear-gradient(135deg, #823fc9, #356bc7);
+    color: white;
+    padding: 15px 20px;
+    border-radius: 10px;
+}
+
+.message { padding: 60px; }
+
+.tracker-container, .container {
+    width: 60%;
+    margin: auto;
+    margin-top: 20px;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+}
+
+/* 🔥 UPDATED BUTTON */
+button {
+    background: #1E90FF;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    margin: 8px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #1565C0;
+}
+
+.habit {
+    margin: 10px 0;
+    padding: 10px;
+    background: #E3F2FD;
+    border-radius: 5px;
+}
+
+.entry {
+    margin-top: 10px;
+    padding: 10px;
+    background: #bccdde;
+    border-radius: 5px;
+}
+
+/* 🔥 IMPORTANT: CONTROL CHART SIZE */
+canvas {
+    margin-top: 15px;
+}
+
+/* SMALL CHARTS */
+#habitChart {
+    width: 180px !important;
+    height: 180px !important;
+    margin: 10px auto;
+}
+
+#healthChart {
+    width: 280px !important;
+    height: 180px !important;
+    margin: 20px auto;
+}
+</style>
+</head>
+
+<body>
+
+<div class="message">
+<h2>Small steps lead to big changes! 🌱 Keep going — you’re building a better you!</h2>
+</div>
+
+<!-- MONTH SELECTOR -->
+<form method="GET" action="/tracker">
+    <label><strong>Select Month:</strong></label>
+    <select name="month" onchange="this.form.submit()">
+        <% for(let i=1;i<=12;i++){ %>
+            <option value="<%= i %>" <%= selectedMonth == i ? 'selected' : '' %>>
+                <%= ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][i-1] %>
+            </option>
+        <% } %>
+    </select>
+</form>
+
+<!-- ================= HABIT TRACKER ================= -->
+
+<div class="tracker-container">
+<h1>Habit Tracker</h1>
+
+<form action="/add-habit" method="POST">
+    <input type="text" name="habit" placeholder="Enter habit" required>
+    <input type="hidden" name="month" value="<%= selectedMonth %>">
+    <button type="submit">Add Habit</button>
+</form>
+
+<div id="habits">
+<% if (habits && habits.length > 0) { %>
+
+    <% const year = new Date().getFullYear(); %>
+
+    <% habits.forEach(habit => { %>
+        <div class="habit">
+            <h3><%= habit.habit_name %></h3>
+
+            <div style="display:flex; flex-wrap:wrap; gap:5px; justify-content:center;">
+                <% for(let d=1; d<=30; d++){ 
+
+                    const formattedDate = `${year}-${String(selectedMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+
+                    const found = logs.find(l => {
+                        const logDate = new Date(l.date);
+
+                        const logFormatted = logDate.getFullYear() + '-' +
+                            String(logDate.getMonth() + 1).padStart(2, '0') + '-' +
+                            String(logDate.getDate()).padStart(2, '0');
+
+                        return l.habit_id === habit.id && logFormatted === formattedDate && l.status === true;
+                    });
+
+                %>
+                    <label>
+                        <input type="checkbox"
+                            <%= found ? "checked" : "" %>
+                            onchange="updateHabit(<%= habit.id %>, <%= d %>, this.checked)">
+                        <span style="font-size:10px;"><%= d %></span>
+                    </label>
+                <% } %>
+            </div>
+
+            <form action="/delete-habit/<%= habit.id %>?month=<%= selectedMonth %>" 
+                  method="POST">
+                <button type="submit" style="background-color:#FF6347;">
+                    Delete
+                </button>
+            </form>
+
+        </div>
+    <% }) %>
+
+<% } else { %>
+    <p>No habits for this month</p>
+<% } %>
+</div>
+
+<h3>Habit Progress</h3>
+<canvas id="habitChart"></canvas>
+
+</div>
+
+<!-- ================= HEALTH TRACKER ================= -->
+
+<div class="container">
+<h1>Health Tracker</h1>
+
+<form action="/add-entry" method="POST">
+    <select name="type">
+        <option value="Height">Height</option>
+        <option value="Weight">Weight</option>
+    </select>
+
+    <input type="number" name="value" placeholder="Enter Value" required>
+    <input type="hidden" name="month" value="<%= selectedMonth %>">
+
+    <button type="submit">Add Entry</button>
+</form>
+
+<div id="entriesContainer">
+<% if (entries && entries.length > 0) { %>
+    <% entries.forEach(entry => { %>
+        <div class="entry">
+            <strong><%= entry.type %></strong>: <%= entry.value %> 
+            (<%= new Date(entry.date).toLocaleDateString() %>)
+
+            <form action="/delete-entry/<%= entry.id %>?month=<%= selectedMonth %>" method="POST">
+                <button type="submit" style="background-color:#FF6347;">
+                    Delete
+                </button>
+            </form>
+        </div>
+    <% }) %>
+<% } else { %>
+    <p>No entries for this month</p>
+<% } %>
+</div>
+
+<h3>Health Progress</h3>
+<canvas id="healthChart"></canvas>
+
+</div>
+
+<script>
+const habitsData = <%- JSON.stringify(habits || []) %>;
+let logsData = <%- JSON.stringify(logs || []) %>;
+const entriesData = <%- JSON.stringify(entries || []) %>;
+
+let habitChartInstance = null;
+
+function updateHabit(habitId, day, status) {
+    const month = Number("<%= selectedMonth %>");
+    const year = new Date().getFullYear();
+
+    const date = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+
+    logsData = logsData.filter(log => {
+        const logDate = new Date(log.date);
+        const logFormatted = logDate.getFullYear() + '-' +
+            String(logDate.getMonth() + 1).padStart(2, '0') + '-' +
+            String(logDate.getDate()).padStart(2, '0');
+
+        return !(log.habit_id === habitId && logFormatted === date);
+    });
+
+    logsData.push({
+        habit_id: habitId,
+        date: date,
+        status: status
+    });
+
+    generateHabitChart();
+
+    fetch("/update-habit", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ habitId, day, status, month })
+    });
+}
+
+function generateHabitChart() {
+    const ctx = document.getElementById("habitChart").getContext("2d");
+
+    const labels = [];
+    const data = [];
+
+    habitsData.forEach(habit => {
+        labels.push(habit.habit_name);
+
+        let completed = logsData.filter(log =>
+            log.habit_id === habit.id && log.status === true
+        ).length;
+
+        data.push(Math.round((completed / 30) * 100));
+    });
+
+    if (habitChartInstance) habitChartInstance.destroy();
+
+    habitChartInstance = new Chart(ctx, {
+        type: "doughnut",
+        data: {
+            labels,
+            datasets: [{
+                data,
+                backgroundColor: ["#4CAF50","#2196F3","#FF9800","#E91E63","#9C27B0"]
+            }]
+        },
+        options: {
+            cutout: "75%",
+            plugins: {
+                legend: { position: "bottom" }
+            }
+        }
+    });
+}
+
+function generateHealthChart() {
+    const ctx = document.getElementById("healthChart").getContext("2d");
+
+    if (!entriesData.length) return;
+
+    const height = [];
+    const weight = [];
+    const labels = [];
+
+    entriesData.forEach(e => {
+        labels.push(new Date(e.date).toLocaleDateString());
+
+        if (e.type === "Height") {
+            height.push(e.value);
+            weight.push(null);
+        } else {
+            weight.push(e.value);
+            height.push(null);
+        }
+    });
+
+    new Chart(ctx, {
+        type: "line",
+        data: {
+            labels,
+            datasets: [
+                { label: "Height", data: height, borderColor: "#2196F3", tension: 0.3 },
+                { label: "Weight", data: weight, borderColor: "#FF5722", tension: 0.3 }
+            ]
+        },
+        options: {
+            plugins: { legend: { position: "bottom" } }
+        }
+    });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    generateHabitChart();
+    generateHealthChart();
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+    generateHabitChart();
+    generateHealthChart();
+});
+
+// 🔥 FORCE reload when coming back from history
+window.addEventListener("pageshow", function (event) {
+    if (event.persisted) {
+        window.location.reload();
+    }
+});
+
+// 🔥 STRONGER: detect back/forward using visibility
+document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible") {
+        const nav = performance.getEntriesByType("navigation")[0];
+        if (nav && nav.type === "back_forward") {
+            window.location.reload();
+        }
+    }
+});
+
+// 🔥 disable caching completely
+window.addEventListener("unload", function () {});
+
+</script>
+
+</body>
+</html>
