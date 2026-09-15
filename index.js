@@ -8,7 +8,13 @@ import GoogleStrategy from "passport-google-oauth2";
 import session from "express-session";
 import env from "dotenv";
 import methodOverride from "method-override";
-
+import multer from "multer";
+import fs from "fs";
+import { transcribeAudio } from "./services/speechToText.js";
+import { parseReminder } from "./services/reminderParser.js";
+import { startScheduler } from "./services/reminderScheduler.js";
+// 0@gmail.com
+// 000000
 const app = express();
 const port = 3000;
 const saltRounds = 10;
@@ -41,6 +47,9 @@ const db = new pg.Client({
   port: process.env.PG_PORT,
 });
 db.connect();
+
+// Start background reminder scheduler
+startScheduler(db);
 
 // Route Handlers
 app.get("/", (req, res) => {
@@ -118,9 +127,13 @@ app.get("/post/:id", async (req, res) => {
   }
 });
 
-// app.get("/create", (req, res) => {
-//     res.render("create.ejs");
-// });
+app.get("/create", (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.redirect("/login");
+  }
+
+  res.render("create.ejs");
+});
 
 // Registration Route
 app.post("/register", async (req, res) => {
@@ -486,13 +499,20 @@ app.post("/update-habit", async (req, res) => {
 
 // BLOGPOSTS --------------------------------------------------
 app.post("/create", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.redirect("/login");
+  }
+
   const { title, content } = req.body;
+
   try {
     const userId = req.user.id;
+
     await db.query(
       "INSERT INTO BlogPosts (title, content, user_id) VALUES ($1, $2, $3)",
       [title, content, userId]
     );
+
     res.redirect("/community");
   } catch (err) {
     console.error("Error adding post:", err);
@@ -519,6 +539,254 @@ app.get("/locator", (req, res) => {
 app.use((req, res, next) => {
   res.set("Cache-Control", "no-store");
   next();
+});
+
+// ================= RESOURCES / VOICE REMINDER FEATURE =================
+
+// Multer Upload Configuration
+const upload = multer({
+  dest: "public/uploads/",
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10 MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Enforce audio/webm and audio/wav only (Chrome can send video/webm or audio/webm)
+    const allowedMimeTypes = ["audio/webm", "video/webm", "audio/wav", "application/octet-stream"];
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Accepted formats: audio/webm and audio/wav only"));
+    }
+  }
+});
+
+// 1. GET /resources
+app.get("/resources", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.redirect("/login");
+  }
+
+  try {
+    // Fetch upcoming reminders grouped by event, sorted by event_datetime nearest first
+    const remindersResult = await db.query(
+      `SELECT MIN(id) as id, title, event_datetime 
+       FROM reminders 
+       WHERE user_id = $1 AND event_datetime > NOW()
+       GROUP BY title, event_datetime
+       ORDER BY event_datetime ASC`,
+      [req.user.id]
+    );
+
+    // Fetch user notifications triggered, ordered latest first
+    const notificationsResult = await db.query(
+      `SELECT * FROM notifications 
+       WHERE user_id = $1 
+       ORDER BY created_at DESC`,
+      [req.user.id]
+    );
+
+    res.render("resources.ejs", {
+      reminders: remindersResult.rows || [],
+      notifications: notificationsResult.rows || [],
+      user: req.user
+    });
+  } catch (err) {
+    console.error("Error loading resources:", err);
+    res.status(500).send("Error loading resources.");
+  }
+});
+
+// 2. POST /resources/voice
+app.post("/resources/voice", upload.single("audio"), async (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ success: false, message: "Unauthorized." });
+  }
+
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: "We couldn't hear anything — please try recording again." });
+  }
+
+  // Server-side verification of audio format
+  const allowedMimeTypes = ["audio/webm", "video/webm", "audio/wav", "application/octet-stream"];
+  if (!allowedMimeTypes.includes(req.file.mimetype)) {
+    try {
+      await fs.promises.unlink(req.file.path);
+    } catch { }
+    return res.status(400).json({ success: false, message: "Accepted formats: audio/webm and audio/wav only" });
+  }
+
+  try {
+    // Send audio to STT
+    const transcript = await transcribeAudio(req.file.path, req.file.mimetype);
+
+    // Parse transcript to extract title and date/time components
+    const parsedResult = await parseReminder(transcript);
+
+    if (!parsedResult.success) {
+      return res.status(400).json(parsedResult);
+    }
+
+    return res.json(parsedResult);
+  } catch (err) {
+    console.error("Voice processing error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to process your voice recording. Please try again."
+    });
+  } finally {
+    // Always discard the uploaded temp audio file
+    if (req.file && req.file.path) {
+      try {
+        await fs.promises.unlink(req.file.path);
+        console.log(`[STT] Cleaned up temp upload file: ${req.file.path}`);
+      } catch (unlinkErr) {
+        console.error("Failed to clean up temp file:", unlinkErr.message);
+      }
+    }
+  }
+});
+
+// 2b. POST /resources/text  ← text input fallback, same parser as voice
+app.post("/resources/text", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ success: false, message: "Unauthorized." });
+  }
+
+  // Validate and sanitise the incoming text
+  const raw = req.body.text;
+  if (!raw || typeof raw !== "string") {
+    return res.status(400).json({ success: false, message: "Please provide reminder text." });
+  }
+  const text = raw.trim();
+  if (text.length === 0) {
+    return res.status(400).json({ success: false, message: "Reminder text cannot be empty." });
+  }
+  const MAX_TEXT_LEN = 500;
+  if (text.length > MAX_TEXT_LEN) {
+    return res.status(400).json({
+      success: false,
+      message: `Reminder text is too long (max ${MAX_TEXT_LEN} characters).`
+    });
+  }
+
+  // Feed directly into the COMMON reminder parser — identical to the voice path
+  try {
+    const parsedResult = await parseReminder(text);
+    if (!parsedResult.success) {
+      return res.status(400).json(parsedResult);
+    }
+    return res.json(parsedResult);
+  } catch (err) {
+    console.error("Text reminder parsing error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to process your reminder text. Please try again."
+    });
+  }
+});
+
+// 3. POST /resources/reminders
+app.post("/resources/reminders", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ success: false, message: "Unauthorized." });
+  }
+
+  const { title, event_datetime } = req.body;
+  if (!title || !event_datetime) {
+    return res.status(400).json({ success: false, message: "Missing title or event date/time." });
+  }
+
+  const eventTime = new Date(event_datetime);
+  if (isNaN(eventTime.getTime())) {
+    return res.status(400).json({ success: false, message: "Invalid date/time format." });
+  }
+
+  const now = new Date();
+  if (eventTime <= now) {
+    return res.status(400).json({ success: false, message: "That date/time has already passed — please provide a future date and time." });
+  }
+
+  const userId = req.user.id;
+
+  // Calculate default reminder times:
+  // 3 days before, 1 day before, 1 hour before
+  const offsets = [
+    { label: "3 days before", time: new Date(eventTime.getTime() - 3 * 24 * 60 * 60 * 1000) },
+    { label: "1 day before", time: new Date(eventTime.getTime() - 1 * 24 * 60 * 60 * 1000) },
+    { label: "1 hour before", time: new Date(eventTime.getTime() - 1 * 60 * 60 * 1000) }
+  ];
+
+  // Filter out past reminder times
+  const validOffsets = offsets.filter(offset => offset.time > now);
+
+  // If all offset times are in the past there is nothing to schedule.
+  // (The event itself is still in the future but all reminder triggers have passed.)
+  // Tell the user instead of silently creating nothing.
+  const reminderTimes = validOffsets.map(o => o.time);
+  if (reminderTimes.length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: "All reminder times for this event are already in the past. Try scheduling an event further in the future."
+    });
+  }
+
+  // Insert reminder rows transactionally
+  try {
+    await db.query("BEGIN");
+
+    for (const remindAt of reminderTimes) {
+      await db.query(
+        `INSERT INTO reminders (user_id, title, event_datetime, remind_at)
+         VALUES ($1, $2, $3, $4)`,
+        [userId, title, eventTime, remindAt]
+      );
+    }
+
+    await db.query("COMMIT");
+    return res.json({ success: true, message: "Reminder successfully scheduled!" });
+  } catch (dbErr) {
+    await db.query("ROLLBACK");
+    console.error("Database transaction failure during confirm:", dbErr);
+    return res.status(500).json({ success: false, message: "Database failure during confirm." });
+  }
+});
+
+// 4. DELETE /resources/reminders/:id
+app.delete("/resources/reminders/:id", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).send("Unauthorized");
+  }
+
+  const reminderId = parseInt(req.params.id);
+  if (isNaN(reminderId)) {
+    return res.status(404).send("Reminder not found.");
+  }
+
+  try {
+    // 1. Fetch details of target reminder first, ensuring it belongs to current user
+    const checkResult = await db.query(
+      "SELECT title, event_datetime FROM reminders WHERE id = $1 AND user_id = $2",
+      [reminderId, req.user.id]
+    );
+
+    if (checkResult.rows.length === 0) {
+      // 404 (not 403) to avoid confirming existence
+      return res.status(404).send("Reminder not found.");
+    }
+
+    const { title, event_datetime } = checkResult.rows[0];
+
+    // 2. Delete all rows sharing the event title and event_datetime for this user
+    await db.query(
+      "DELETE FROM reminders WHERE user_id = $1 AND title = $2 AND event_datetime = $3",
+      [req.user.id, title, event_datetime]
+    );
+
+    res.redirect("/resources");
+  } catch (err) {
+    console.error("Error deleting reminder:", err);
+    res.status(500).send("Error deleting reminder.");
+  }
 });
 
 

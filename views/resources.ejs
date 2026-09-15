@@ -1,0 +1,675 @@
+<%- include('partials/header') %>
+
+<link
+  href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+  rel="stylesheet"
+  integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+  crossorigin="anonymous"
+/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+<style>
+  body {
+    background-color: #e2f1f9;
+    font-family: 'Lucida Sans', Geneva, Verdana, sans-serif;
+    color: #1a365d;
+    min-height: 100vh;
+  }
+
+  .text-bg-dark {
+    background: linear-gradient(to right, #7fbae1, #7cc6e4) !important;
+  }
+
+  .main-card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+    border: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .main-card:hover {
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+  }
+
+  .pulse-btn {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: #1e90ff;
+    border: none;
+    color: white;
+    font-size: 2.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(30, 144, 255, 0.4);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    margin: 0 auto;
+    position: relative;
+  }
+
+  .pulse-btn:hover {
+    background: #1565c0;
+    transform: scale(1.05);
+  }
+
+  .pulse-btn.recording {
+    background: #e53e3e;
+    box-shadow: 0 0 0 0 rgba(229, 62, 62, 0.7);
+    animation: pulse 1.5s infinite;
+  }
+
+  .pulse-btn:disabled {
+    background: #90cdf4;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  @keyframes pulse {
+    0%   { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(229, 62, 62, 0.7); }
+    70%  { transform: scale(1);    box-shadow: 0 0 0 15px rgba(229, 62, 62, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(229, 62, 62, 0); }
+  }
+
+  .status-text {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: #4a5568;
+    margin-top: 15px;
+  }
+
+  .timer-display {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #e53e3e;
+    margin-top: 5px;
+    font-family: monospace;
+  }
+
+  .confirmation-container {
+    background: #f7fafc;
+    border-radius: 12px;
+    border: 1px dashed #cbd5e0;
+    padding: 20px;
+    margin-top: 20px;
+  }
+
+  .list-header {
+    border-bottom: 2px solid #7fbae1;
+    color: #043a60;
+    font-weight: bold;
+    padding-bottom: 8px;
+    margin-bottom: 15px;
+  }
+
+  .reminder-item {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s ease;
+  }
+
+  .reminder-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    border-color: #cbd5e0;
+  }
+
+  .notification-item {
+    background: #f7fafc;
+    border-left: 4px solid #7fbae1;
+    border-radius: 0 8px 8px 0;
+    padding: 12px 15px;
+    margin-bottom: 10px;
+    font-size: 0.95rem;
+  }
+
+  .divider-or {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #a0aec0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin: 18px 0;
+  }
+
+  .divider-or::before,
+  .divider-or::after {
+    content: "";
+    flex: 1;
+    border-top: 1px solid #e2e8f0;
+  }
+
+  .empty-state {
+    color: #a0aec0;
+    font-style: italic;
+  }
+</style>
+
+<!-- Navigation Header -->
+<div class="px-3 py-2 text-bg-dark border-bottom">
+  <div class="container">
+    <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start">
+      <a href="/" class="d-flex align-items-center my-2 my-lg-0 me-lg-auto text-white text-decoration-none">
+        <img src="/images/heart-pulse-fill.svg" alt="Logo" width="40" height="32" />
+        <span class="fs-4">Curanet</span>
+      </a>
+      <ul class="nav col-12 col-lg-auto my-2 justify-content-center my-md-0 text-small">
+        <li>
+          <a href="/tracker" class="nav-link text-white">
+            <img src="/images/calendar3.svg" alt="Tracker" width="24" height="24" class="d-block mx-auto mb-1" />
+            Tracker
+          </a>
+        </li>
+        <li>
+          <a href="/locator" class="nav-link text-white">
+            <img src="/images/crosshair.svg" alt="Locator" width="24" height="24" class="d-block mx-auto mb-1" />
+            Locator
+          </a>
+        </li>
+        <li>
+          <a href="/community" class="nav-link text-white">
+            <img src="/images/person-plus-fill.svg" alt="Community" width="24" height="24" class="d-block mx-auto mb-1" />
+            Community
+          </a>
+        </li>
+        <li>
+          <a href="/resources" class="nav-link text-white fw-bold" style="text-decoration: underline;">
+            <img src="/images/bag-heart-fill.svg" alt="Resources" width="24" height="24" class="d-block mx-auto mb-1" />
+            Resources
+          </a>
+        </li>
+      </ul>
+      <form action="/logout" method="GET" class="ms-3">
+        <button class="btn btn-danger rounded-pill px-3" type="submit">Logout</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Main Content -->
+<div class="container py-5">
+  <div class="row g-4">
+
+    <!-- ===== LEFT COLUMN: Create a Reminder ===== -->
+    <div class="col-lg-6">
+      <div class="card main-card p-4 h-100">
+        <h3 class="mb-1 text-center" style="color: #043a60; font-weight: bold;">
+          <i class="bi bi-calendar-plus-fill"></i> Create a Reminder
+        </h3>
+        <p class="text-muted text-center mb-4" style="font-size: 0.9rem;">
+          Speak or type something like:<br>
+          <em>"Aarav has a doctor's appointment tomorrow at 5 PM."</em>
+        </p>
+
+        <!-- ── VOICE SECTION ── -->
+        <section aria-label="Voice reminder input">
+          <h5 class="fw-bold mb-2" style="color: #2b6cb0;">
+            <i class="bi bi-mic-fill"></i> Speak Reminder
+          </h5>
+
+          <!-- Mic unavailable notice (shown when getUserMedia fails) -->
+          <div id="micUnavailableMsg" class="alert alert-warning d-none" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            Microphone access isn't available. You can type your reminder below instead.
+          </div>
+
+          <div class="text-center my-3" id="micSection">
+            <button id="micBtn" class="pulse-btn" type="button" aria-label="Start voice recording">
+              <i class="bi bi-mic" aria-hidden="true"></i>
+            </button>
+            <div id="statusText" class="status-text" aria-live="polite">Click to Start Recording</div>
+            <div id="timerDisplay" class="timer-display d-none" aria-live="off">00:00</div>
+          </div>
+        </section>
+
+        <!-- Voice error alert -->
+        <div id="voiceErrorPanel" class="alert alert-danger d-none mt-2" role="alert" aria-live="assertive"></div>
+
+        <!-- Processing spinner (shared by voice path) -->
+        <div id="processingPanel" class="text-center d-none my-3" aria-live="polite">
+          <div class="spinner-border text-primary" role="status" style="width:3rem;height:3rem;">
+            <span class="visually-hidden">Processing…</span>
+          </div>
+          <div class="mt-2 text-muted fw-bold">Processing voice audio…</div>
+        </div>
+
+        <!-- ── OR DIVIDER ── -->
+        <div class="divider-or" role="separator">OR</div>
+
+        <!-- ── TEXT SECTION ── -->
+        <section aria-label="Text reminder input">
+          <h5 class="fw-bold mb-2" style="color: #2b6cb0;">
+            <i class="bi bi-keyboard-fill"></i> Type Reminder
+          </h5>
+          <div class="mb-2">
+            <label for="textReminderInput" class="form-label fw-semibold">
+              Describe your reminder
+            </label>
+            <textarea
+              id="textReminderInput"
+              class="form-control"
+              rows="3"
+              maxlength="500"
+              placeholder="e.g. Aarav has a doctor's appointment tomorrow at 5 PM."
+              aria-describedby="textCharCount"
+            ></textarea>
+            <div id="textCharCount" class="text-muted text-end mt-1" style="font-size:0.8rem;">0 / 500</div>
+          </div>
+          <button id="textSubmitBtn" class="btn btn-primary w-100 fw-bold" type="button">
+            <i class="bi bi-search" aria-hidden="true"></i> Parse Reminder
+          </button>
+          <!-- Text error alert -->
+          <div id="textErrorPanel" class="alert alert-danger d-none mt-2" role="alert" aria-live="assertive"></div>
+          <!-- Text processing spinner -->
+          <div id="textProcessingPanel" class="text-center d-none mt-3" aria-live="polite">
+            <div class="spinner-border text-primary" role="status" style="width:2rem;height:2rem;">
+              <span class="visually-hidden">Processing…</span>
+            </div>
+            <span class="ms-2 text-muted fw-bold">Parsing reminder…</span>
+          </div>
+        </section>
+
+        <!-- ── CONFIRMATION PANEL (shared by voice & text) ── -->
+        <div id="confirmationPanel" class="confirmation-container d-none" aria-live="polite">
+          <h5 class="fw-bold mb-3" style="color: #043a60;">
+            <i class="bi bi-check2-circle" aria-hidden="true"></i> Confirm Your Reminder
+          </h5>
+
+          <div class="mb-3">
+            <label for="reminderTitle" class="form-label fw-bold">Reminder Title</label>
+            <input type="text" id="reminderTitle" class="form-control" placeholder="What's this reminder for?">
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-sm-6">
+              <label for="reminderDate" class="form-label fw-bold">Date</label>
+              <input type="date" id="reminderDate" class="form-control">
+            </div>
+            <div class="col-sm-6">
+              <label for="reminderTime" class="form-label fw-bold">Time</label>
+              <input type="time" id="reminderTime" class="form-control">
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <span class="fw-bold d-block mb-1">Alerts will be sent:</span>
+            <ul class="text-muted ps-3 mb-0" style="font-size: 0.9rem;">
+              <li>3 days before the event <em>(if time allows)</em></li>
+              <li>1 day before the event <em>(if time allows)</em></li>
+              <li>1 hour before the event <em>(if time allows)</em></li>
+            </ul>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button id="confirmBtn" class="btn btn-success flex-grow-1 fw-bold" type="button">
+              <i class="bi bi-check-circle-fill" aria-hidden="true"></i> Confirm
+            </button>
+            <button id="cancelBtn" class="btn btn-secondary fw-bold" type="button">
+              Cancel
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /left column -->
+
+    <!-- ===== RIGHT COLUMN: Lists ===== -->
+    <div class="col-lg-6">
+
+      <!-- Upcoming Reminders -->
+      <div class="card main-card p-4 mb-4">
+        <h4 class="list-header">
+          <i class="bi bi-bell-fill" aria-hidden="true"></i> Upcoming Reminders
+        </h4>
+        <div style="max-height: 350px; overflow-y: auto;">
+          <% if (reminders && reminders.length > 0) { %>
+            <% reminders.forEach(reminder => { %>
+              <div class="reminder-item">
+                <div>
+                  <h6 class="fw-bold mb-1 text-dark"><%= reminder.title %></h6>
+                  <small class="text-primary fw-semibold">
+                    <i class="bi bi-clock" aria-hidden="true"></i>
+                    <%= new Date(reminder.event_datetime).toLocaleString("en-US", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" }) %>
+                  </small>
+                </div>
+                <div>
+                  <form action="/resources/reminders/<%= reminder.id %>?_method=DELETE" method="POST"
+                        onsubmit="return confirm('Cancel all alerts for this event?');">
+                    <input type="hidden" name="_method" value="DELETE">
+                    <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3">
+                      Cancel
+                    </button>
+                  </form>
+                </div>
+              </div>
+            <% }) %>
+          <% } else { %>
+            <p class="empty-state text-center py-3">No upcoming reminders.</p>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- Notifications Log -->
+      <div class="card main-card p-4">
+        <h4 class="list-header">
+          <i class="bi bi-chat-left-text-fill" aria-hidden="true"></i> Notifications Log
+        </h4>
+        <div style="max-height: 250px; overflow-y: auto;">
+          <% if (notifications && notifications.length > 0) { %>
+            <% notifications.forEach(notif => { %>
+              <div class="notification-item">
+                <div class="fw-semibold text-dark"><%= notif.message %></div>
+                <div class="text-muted mt-1" style="font-size: 0.8rem;">
+                  <i class="bi bi-calendar-event" aria-hidden="true"></i>
+                  <%= new Date(notif.created_at).toLocaleString("en-US", { timeZone: "Asia/Kolkata", dateStyle: "short", timeStyle: "short" }) %>
+                </div>
+              </div>
+            <% }) %>
+          <% } else { %>
+            <p class="empty-state text-center py-3">No notifications yet.</p>
+          <% } %>
+        </div>
+      </div>
+
+    </div><!-- /right column -->
+
+  </div>
+</div>
+
+<script
+  src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+  integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+  crossorigin="anonymous"
+></script>
+
+<script>
+  // ─────────────────────────────────────────
+  // DOM refs
+  // ─────────────────────────────────────────
+  const micBtn            = document.getElementById("micBtn");
+  const statusText        = document.getElementById("statusText");
+  const timerDisplay      = document.getElementById("timerDisplay");
+  const voiceErrorPanel   = document.getElementById("voiceErrorPanel");
+  const processingPanel   = document.getElementById("processingPanel");
+  const micUnavailableMsg = document.getElementById("micUnavailableMsg");
+  const micSection        = document.getElementById("micSection");
+
+  const textReminderInput  = document.getElementById("textReminderInput");
+  const textSubmitBtn      = document.getElementById("textSubmitBtn");
+  const textErrorPanel     = document.getElementById("textErrorPanel");
+  const textProcessingPanel= document.getElementById("textProcessingPanel");
+  const textCharCount      = document.getElementById("textCharCount");
+
+  // Shared confirmation panel
+  const confirmationPanel = document.getElementById("confirmationPanel");
+  const reminderTitle     = document.getElementById("reminderTitle");
+  const reminderDate      = document.getElementById("reminderDate");
+  const reminderTime      = document.getElementById("reminderTime");
+  const confirmBtn        = document.getElementById("confirmBtn");
+  const cancelBtn         = document.getElementById("cancelBtn");
+
+  // ─────────────────────────────────────────
+  // Character counter for textarea
+  // ─────────────────────────────────────────
+  textReminderInput.addEventListener("input", () => {
+    textCharCount.textContent = `${textReminderInput.value.length} / 500`;
+  });
+
+  // ─────────────────────────────────────────
+  // Shared confirmation / save logic
+  // ─────────────────────────────────────────
+  cancelBtn.addEventListener("click", hideConfirmation);
+  confirmBtn.addEventListener("click", saveReminder);
+
+  // Populate the shared confirmation panel from a parsed API response
+  function showConfirmation(data) {
+    reminderTitle.value = data.title || "";
+
+    const dateObj = new Date(data.event_datetime);
+
+    const formatterDate = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit"
+    });
+    const partsDate = formatterDate.formatToParts(dateObj);
+    const y = partsDate.find(p => p.type === "year").value;
+    const m = partsDate.find(p => p.type === "month").value;
+    const d = partsDate.find(p => p.type === "day").value;
+    reminderDate.value = `${y}-${m}-${d}`;
+
+    const formatterTime = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false
+    });
+    const partsTime = formatterTime.formatToParts(dateObj);
+    const hh = partsTime.find(p => p.type === "hour").value;
+    const mm = partsTime.find(p => p.type === "minute").value;
+    reminderTime.value = `${hh}:${mm}`;
+
+    confirmationPanel.classList.remove("d-none");
+    confirmationPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function hideConfirmation() {
+    confirmationPanel.classList.add("d-none");
+    statusText.innerText = "Click to Start Recording";
+  }
+
+  async function saveReminder() {
+    const titleVal = reminderTitle.value.trim();
+    const dateVal  = reminderDate.value;
+    const timeVal  = reminderTime.value;
+
+    if (!titleVal || !dateVal || !timeVal) {
+      alert("Please fill in all confirmation fields.");
+      return;
+    }
+
+    // Build ISO string for the Kolkata date+time the user confirmed
+    const kolkataIsoStr = `${dateVal}T${timeVal}:00+05:30`;
+
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving…';
+
+    try {
+      const response = await fetch("/resources/reminders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: titleVal, event_datetime: kolkataIsoStr })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        alert(result.message || "Failed to confirm reminder.");
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Confirm';
+      } else {
+        window.location.reload();
+      }
+    } catch (err) {
+      console.error("Save error:", err);
+      alert("Save failed. Unable to communicate with the server.");
+      confirmBtn.disabled = false;
+      confirmBtn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Confirm';
+    }
+  }
+
+  // ─────────────────────────────────────────
+  // TEXT INPUT PATH
+  // ─────────────────────────────────────────
+  textSubmitBtn.addEventListener("click", async () => {
+    const text = textReminderInput.value.trim();
+    textErrorPanel.classList.add("d-none");
+    hideConfirmation();
+
+    if (!text) {
+      textErrorPanel.textContent = "Please enter your reminder text first.";
+      textErrorPanel.classList.remove("d-none");
+      return;
+    }
+    if (text.length > 500) {
+      textErrorPanel.textContent = "Reminder text is too long (max 500 characters).";
+      textErrorPanel.classList.remove("d-none");
+      return;
+    }
+
+    textSubmitBtn.disabled = true;
+    textProcessingPanel.classList.remove("d-none");
+
+    try {
+      const response = await fetch("/resources/text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        textErrorPanel.textContent = result.message || "Could not parse your reminder.";
+        textErrorPanel.classList.remove("d-none");
+      } else {
+        showConfirmation(result);
+      }
+    } catch (err) {
+      console.error("Text submit error:", err);
+      textErrorPanel.textContent = "Connection error. Please try again.";
+      textErrorPanel.classList.remove("d-none");
+    } finally {
+      textSubmitBtn.disabled = false;
+      textProcessingPanel.classList.add("d-none");
+    }
+  });
+
+  // Allow Enter key (Ctrl+Enter) to submit the textarea
+  textReminderInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      textSubmitBtn.click();
+    }
+  });
+
+  // ─────────────────────────────────────────
+  // VOICE INPUT PATH
+  // ─────────────────────────────────────────
+  let mediaRecorder;
+  let audioChunks = [];
+  let recordTimer;
+  let secondsRecorded = 0;
+  const maxRecordingSeconds = 120; // 2 minutes
+
+  micBtn.addEventListener("click", toggleRecording);
+
+  async function toggleRecording() {
+    if (mediaRecorder && mediaRecorder.state === "recording") {
+      stopRecording();
+    } else {
+      await startRecording();
+    }
+  }
+
+  async function startRecording() {
+    audioChunks = [];
+    voiceErrorPanel.classList.add("d-none");
+    hideConfirmation();
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      let options = { mimeType: "audio/webm" };
+      if (!MediaRecorder.isTypeSupported("audio/webm")) {
+        options = { mimeType: "audio/ogg" };
+      }
+      if (!MediaRecorder.isTypeSupported("audio/ogg")) {
+        options = {};
+      }
+
+      mediaRecorder = new MediaRecorder(stream, options);
+      mediaRecorder.addEventListener("dataavailable", e => audioChunks.push(e.data));
+      mediaRecorder.addEventListener("stop", handleAudioData);
+      mediaRecorder.start();
+
+      micBtn.classList.add("recording");
+      micBtn.innerHTML = '<i class="bi bi-stop-fill" aria-hidden="true"></i>';
+      micBtn.setAttribute("aria-label", "Stop recording");
+      statusText.innerText = "Recording… Click to Stop";
+      timerDisplay.classList.remove("d-none");
+      secondsRecorded = 0;
+      updateTimerDisplay();
+
+      recordTimer = setInterval(() => {
+        secondsRecorded++;
+        updateTimerDisplay();
+        if (secondsRecorded >= maxRecordingSeconds) stopRecording();
+      }, 1000);
+
+    } catch (err) {
+      console.error("Microphone access denied:", err);
+      // Show the mic-unavailable banner and hide the mic button section
+      micUnavailableMsg.classList.remove("d-none");
+      micSection.classList.add("d-none");
+    }
+  }
+
+  function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state === "recording") {
+      mediaRecorder.stop();
+      mediaRecorder.stream.getTracks().forEach(t => t.stop());
+    }
+    clearInterval(recordTimer);
+    micBtn.classList.remove("recording");
+    micBtn.innerHTML = '<i class="bi bi-mic" aria-hidden="true"></i>';
+    micBtn.setAttribute("aria-label", "Start voice recording");
+    statusText.innerText = "Processing audio…";
+    timerDisplay.classList.add("d-none");
+  }
+
+  function updateTimerDisplay() {
+    const mins = String(Math.floor(secondsRecorded / 60)).padStart(2, "0");
+    const secs = String(secondsRecorded % 60).padStart(2, "0");
+    timerDisplay.innerText = `${mins}:${secs}`;
+  }
+
+  async function handleAudioData() {
+    const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || "audio/webm" });
+    processingPanel.classList.remove("d-none");
+    statusText.innerText = "Transcribing & Parsing…";
+    micBtn.disabled = true;
+
+    const formData = new FormData();
+    formData.append("audio", audioBlob, "voice-reminder.webm");
+
+    try {
+      const response = await fetch("/resources/voice", { method: "POST", body: formData });
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        voiceErrorPanel.textContent = result.message || "Failed to process audio.";
+        voiceErrorPanel.classList.remove("d-none");
+        statusText.innerText = "Click to Start Recording";
+      } else {
+        showConfirmation(result);
+        statusText.innerText = "Awaiting Confirmation";
+      }
+    } catch (err) {
+      console.error("Upload error:", err);
+      voiceErrorPanel.textContent = "Connection failed. Unable to communicate with the server.";
+      voiceErrorPanel.classList.remove("d-none");
+      statusText.innerText = "Click to Start Recording";
+    } finally {
+      processingPanel.classList.add("d-none");
+      micBtn.disabled = false;
+    }
+  }
+</script>
+
+<%- include('partials/footer') %>
