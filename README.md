@@ -12,7 +12,8 @@ Curanet is a web application designed to help caregivers track personal health v
 - **Passport.js**: Authentication handling via local credentials (`bcrypt`) and Google OAuth 2.0 (`passport-google-oauth2`).
 - **Node-Cron**: Automated background job scheduling for periodic reminder checks.
 - **Resend API**: Email delivery service for sending reminder notifications.
-- **Groq API / Whisper & Chrono-node**: Voice transcription (`multer` + speech-to-text) and natural language date/time parsing.
+- **Groq (Whisper) & Google Gemini**: Speech-to-text audio transcription with fallback handling.
+- **Chrono-node & Gemini**: Natural language date/time parsing and structured entity extraction.
 
 ### **Frontend & UI**
 - **EJS**: Server-side rendering of dynamic views and layouts.
@@ -64,11 +65,28 @@ Curanet is a web application designed to help caregivers track personal health v
 
 ---
 
-### 6. Voice & Reminders *(In Progress)*
+### 6. Voice & Medication Reminders
 > **Page**: `views/tracker.ejs` (Reminders section)  
-> **Description**: *Currently under active development.* Set healthcare and medication reminders via text or voice recording, parsed into calendar dates with automated email dispatch via Resend.
+> **Description**: Set healthcare and medication reminders using voice or text. Audio is transcribed and parsed into dates and times, saved to the database, and sent as scheduled email reminders via Resend.
 
 ![Reminders Section](screenshots/reminders_section.png)
+#### AI & Speech Processing Workflow
+
+The reminders feature allows users to speak or type reminders in natural language (e.g., *"Doctor's appointment tomorrow at 5 PM"*). The system processes and schedules them through the following pipeline:
+
+1. **Audio Recording & Transcription**:
+   - The user records voice input in the browser via the MediaStream Recording API.
+   - The backend sends the audio to **Groq's Whisper API** (`whisper-large-v3-turbo`) for fast transcription.
+   - If Groq encounters a rate limit (HTTP 429) or server error, the service automatically falls back to **Google Gemini 2.0 Flash** to transcribe the audio without failing the request.
+
+2. **Date & Entity Extraction**:
+   - The transcribed text is first parsed using **chrono-node** to extract dates and times locally.
+   - If the phrasing is conversational or chrono-node cannot parse it, a fallback prompt is sent to **Gemini 2.0 Flash** to extract the event title, date, and time in structured JSON format.
+   - The system checks for missing dates/times, validates that the event is in the future, and normalizes the timestamp (`Asia/Kolkata` timezone to UTC).
+
+3. **Database Storage & Scheduled Delivery**:
+   - Validated reminders are stored in PostgreSQL.
+   - A background job (`node-cron`) checks every minute for pending reminders and triggers alert emails via the **Resend API**.
 
 ---
 
@@ -116,6 +134,7 @@ PG_PORT=5432
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 GROQ_API_KEY=your_groq_api_key
+GEMINI_API_KEY=your_gemini_api_key
 RESEND_API_KEY=your_resend_api_key
 RESEND_FROM_EMAIL=onboarding@resend.dev
 ```
