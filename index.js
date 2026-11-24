@@ -16,7 +16,7 @@ import { startScheduler } from "./services/reminderScheduler.js";
 // 0@gmail.com
 // 000000
 const app = express();
-const port = 3000;
+const port = 3001;
 const saltRounds = 10;
 env.config();
 
@@ -25,7 +25,7 @@ app.use(
   session({
     secret: process.env.SESSION_SECRET,
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
   })
 );
 
@@ -280,7 +280,7 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: "ur url",
+      // callbackURL: "ur url",
     },
     async (accessToken, refreshToken, profile, cb) => {
       try {
